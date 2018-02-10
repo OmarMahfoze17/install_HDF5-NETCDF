@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# Script to install hdf5 and netCDF4 libraries on a Linux Ubuntu system
+# After: https://code.google.com/p/netcdf4-python/wiki/UbuntuInstall
+# And http://unidata.github.io/netcdf4-python/ 
+
+# You can check for newer version of the programs on 
+# ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/
+# and other sources
+
+BASHRC="~/.bashrc"
+
+# Install zlib
+LOCATION=/usr/local/HDF5
+v=1.2.8  
+wget ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/zlib-${v}.tar.gz
+mv ../zlib-${v}.tar.gz ./
+tar -xf zlib-${v}.tar.gz && cd zlib-${v}
+FC=/usr/local/bin/mpif90 CC=/usr/local/bin/mpicc ./configure --enable-parallel --enable-fortran --enable-shared --prefix=$LOCATION
+#sudo make check 
+sudo make install
+cd ..
+
+# Install HDF5
+v=1.10.1
+wget ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/hdf5-${v}.tar.gz
+mv ../hdf5-${v}.tar.bz2 ./
+tar -xf hdf5-${v}.tar.bz2 
+cd hdf5-${v}
+prefix="$LOCATION/hdf5-$v"
+if [ $HDF5_DIR != $prefix ]; then
+    echo "Add HDF5_DIR=$prefix to .bashrc"
+   echo "" >> $BASHRC
+  echo "# HDF5 libraries for python" >> $BASHRC
+  echo export HDF5_DIR=$prefix  >> $BASHRC
+fi
+#CXX=mpicxx CC=mpicc CPPFLAGS=-I/usr/local/include ./configure --enable-parallel --enable-f90  --prefix=$LOCATION
+#make check
+#make -j 2 # 2 for number of procs to be used
+FC=/usr/local/bin/mpif90 CC=/usr/local/bin/mpicc ./configure --enable-parallel --enable-fortran --enable-shared --prefix=$LOCATION
+#CC=/usr/local/bin/mpicc ./configure --enable-parallel --prefix=<install-directory>
+#-cflags="-D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64"
+
+#CFLAGS=-q64 FCFLAGS=-q64 AR='ar -X 64' ./configure --enable-fortran
+sudo make install
+cd ..
+
+
+#after install add this line to .bacrc "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LOCATION/lib"
+
