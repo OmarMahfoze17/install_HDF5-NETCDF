@@ -1,0 +1,90 @@
+#!/bin/bash
+
+# Script to install zlib, hdf5, netCDF4 and netCDF4_fortran libraries
+# with parallel enabled on a Linux Ubuntu system
+# It is mainly inspired by the installation script given at 
+# https://gist.github.com/perrette/cd815d03830b53e24c82
+# ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/
+# and other sources.
+
+# According to your situation, you may need to change some location, versions, configuration option and etc. 
+ 
+# The script will try to download and unzip the specified version of each library (4 packages), but 
+# if it fails, you have download and unzip manually.
+
+# Make sure to specify the installation directory i.e "LOCATION=/usr/local/HDF5"
+# if the package installed successfully, then add the following two line to .bashrc
+#  export LD_LIBRARY_PATH=/usr/local/lib/
+# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/HDF5/lib
+
+
+BASHRC="~/.bashrc"
+# Install zlib
+LOCATION=/usr/local/HDF5
+v=1.2.8  
+wget ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/zlib-${v}.tar.gz
+mv ../zlib-${v}.tar.gz ./
+tar -xf zlib-${v}.tar.gz && cd zlib-${v}
+FC=/usr/local/bin/mpif90 CC=/usr/local/bin/mpicc ./configure --enable-parallel --enable-fortran --enable-shared --prefix=$LOCATION
+sudo make check 
+sudo make install
+cd ..
+
+# Install HDF5
+v=1.10.1
+wget ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/hdf5-${v}.tar.gz
+mv ../hdf5-${v}.tar.bz2 ./
+tar -xf hdf5-${v}.tar.bz2 
+cd hdf5-${v}
+prefix="$LOCATION/hdf5-$v"
+if [ $HDF5_DIR != $prefix ]; then
+    echo "Add HDF5_DIR=$prefix to .bashrc"
+   echo "" >> $BASHRC
+  echo "# HDF5 libraries for python" >> $BASHRC
+  echo export HDF5_DIR=$prefix  >> $BASHRC
+fi
+
+make -j 2 # 2 for number of procs to be used
+FC=/usr/local/bin/mpif90 CC=/usr/local/bin/mpicc ./configure --enable-parallel --enable-fortran --enable-shared --prefix=$LOCATION
+sudo make install
+cd ..
+
+# Install Netcdf
+v=4.3.3
+wget http://www.unidata.ucar.edu/downloads/netcdf/ftp/netcdf-${v}.tar.gz
+mv ../netcdf-${v}.tar.gz ./
+tar -xf netcdf-${v}.tar.gz 
+cd netcdf-${v}
+prefix="/usr/local/"
+#if [ $NETCDF4_DIR != $prefix ]; then
+ #   echo "Add NETCDF4_DIR=$prefix to .bashrc"
+  #  echo "" >> $BASHRC
+   # echo "# NETCDF4 libraries for python" >> $BASHRC
+   # echo export NETCDF4_DIR=$prefix  >> $BASHRC
+#fi
+FC=/usr/local/bin/mpif90 CC=/usr/local/bin/mpicc CPPFLAGS="-I/usr/local/include -I$LOCATION/include" LDFLAGS=-L$LOCATION/lib ./configure --enable-parallel --enable-fortran --enable-shared --enable-remote-fortran-bootstrap --prefix=$LOCATION
+
+make check
+make 
+sudo make install
+
+cd ..
+
+v=4.4.3  #### BE carful it may not work with other versions
+
+wget https://github.com/Unidata/netcdf-fortran/archive/${v}.tar.gz
+tar -xf netcdf-fortran-${v}.tar.gz
+cd netcdf-fortran-${v}
+
+LOCATION=/usr/local/HDF5
+#export LD_LIBRARY_PATH=${LOCATION}/lib:${LD_LIBRARY_PATH}
+NFDIR=$LOCATION
+export FC=mpif90                              
+CXX=mpicxx CC=mpicc CPPFLAGS="-I${LOCATION}/include -I/usr/local/include" LDFLAGS=-L${LOCATION}/lib ./configure --enable-parallel --enable-fortran --enable-shared  --prefix=${NFDIR}
+make check
+sudo make install
+
+#after install add this line to .bashrc "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LOCATION/lib"
+
+
+
